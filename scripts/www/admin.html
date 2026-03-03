@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员后台 - 年会签到</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .admin-header h1 { margin: 0; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card); padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
+    .stat-card .num { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+    .stat-card .label { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab { padding: 0.5rem 1rem; border: none; background: #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+    .tab.active { background: var(--primary); color: white; }
+    .tab:hover:not(.active) { background: #cbd5e1; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.6rem 0.8rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f1f5f9; font-weight: 500; font-size: 0.85rem; }
+    .row-actions { display: flex; gap: 0.5rem; }
+    .row-actions .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .empty-msg { padding: 2rem; text-align: center; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width: 900px;">
+    <div class="admin-header">
+      <h1>管理员后台</h1>
+      <div>
+        <a href="index.html" class="btn btn-outline btn-sm">返回首页</a>
+        <button id="exportBtn" class="btn btn-primary btn-sm">导出 Excel</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="num" id="statApproved">0</div>
+        <div class="label">审核通过</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="statChecked">0</div>
+        <div class="label">已签到</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="statPending">0</div>
+        <div class="label">未签到</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="approval">报名审批</button>
+      <button class="tab" data-tab="checkin">签到管理</button>
+      <button class="tab" data-tab="weather">天气提示</button>
+    </div>
+
+    <div id="approvalPanel" class="card">
+      <h3 style="margin-top: 0;">报名列表</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>花名</th>
+              <th>手机号</th>
+              <th>所属团队</th>
+              <th>基地</th>
+              <th>职位</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="approvalTableBody"></tbody>
+        </table>
+      </div>
+      <div id="approvalEmpty" class="empty-msg" style="display: none;">暂无报名信息</div>
+    </div>
+
+    <div id="weatherPanel" class="card" style="display: none;">
+      <h3 style="margin-top: 0;">天气提示</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">填写后将在「我的」页面展示</p>
+      <textarea id="weatherTip" rows="4" style="width:100%;padding:0.75rem;border:1px solid #e2e8f0;border-radius:8px;font-size:0.9rem;resize:vertical;" placeholder="例如：活动当日多云，气温15-22℃，建议穿外套"></textarea>
+      <button id="saveWeatherBtn" class="btn btn-primary btn-sm" style="margin-top:0.5rem;">保存天气提示</button>
+    </div>
+
+    <div id="checkinPanel" class="card" style="display: none;">
+      <h3 style="margin-top: 0;">已通过人员（签到管理）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>花名</th>
+              <th>手机号</th>
+              <th>所属团队</th>
+              <th>基地</th>
+              <th>职位</th>
+              <th>签到状态</th>
+              <th>签到编号</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="checkinTableBody"></tbody>
+        </table>
+      </div>
+      <div id="checkinEmpty" class="empty-msg" style="display: none;">暂无已通过人员</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    document.getElementById('weatherTip').value = DataService.getWeatherTip ? DataService.getWeatherTip() : '';
+    document.getElementById('saveWeatherBtn').addEventListener('click', () => {
+      if (DataService.setWeatherTip) {
+        DataService.setWeatherTip(document.getElementById('weatherTip').value);
+        alert('已保存');
+      }
+    });
+    const statusText = { pending: '待审核', approved: '审核通过', rejected: '审核不通过' };
+    const statusClass = { pending: 'status-pending', approved: 'status-approved', rejected: 'status-rejected' };
+
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function render() {
+      const all = DataService.adminGetAll();
+      const approved = all.filter(r => r.status === 'approved');
+      const checked = approved.filter(r => r.checkinNo);
+      const pending = approved.filter(r => !r.checkinNo);
+
+      document.getElementById('statApproved').textContent = approved.length;
+      document.getElementById('statChecked').textContent = checked.length;
+      document.getElementById('statPending').textContent = pending.length;
+
+      // 报名审批表格
+      const approvalBody = document.getElementById('approvalTableBody');
+      const approvalEmpty = document.getElementById('approvalEmpty');
+      if (all.length === 0) {
+        approvalBody.innerHTML = '';
+        approvalEmpty.style.display = 'block';
+      } else {
+        approvalEmpty.style.display = 'none';
+        approvalBody.innerHTML = all.map(r => `
+          <tr>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.phone)}</td>
+            <td>${escapeHtml(r.team || r.department || '-')}</td>
+            <td>${escapeHtml(r.base || '-')}</td>
+            <td>${escapeHtml(r.position || '-')}</td>
+            <td><span class="status-badge ${statusClass[r.status]}">${statusText[r.status]}</span></td>
+            <td class="row-actions">
+              ${r.status === 'pending' ? `
+                <button class="btn btn-success btn-sm" data-id="${r.id}" data-approve="1">通过</button>
+                <button class="btn btn-danger btn-sm" data-id="${r.id}" data-approve="0">不通过</button>
+              ` : '-'}
+            </td>
+          </tr>
+        `).join('');
+        approvalBody.querySelectorAll('[data-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const approved = btn.dataset.approve === '1';
+            DataService.adminApprove(id, approved);
+            render();
+          });
+        });
+      }
+
+      // 签到管理表格（仅已通过）
+      const checkinBody = document.getElementById('checkinTableBody');
+      const checkinEmpty = document.getElementById('checkinEmpty');
+      if (approved.length === 0) {
+        checkinBody.innerHTML = '';
+        checkinEmpty.style.display = 'block';
+      } else {
+        checkinEmpty.style.display = 'none';
+        checkinBody.innerHTML = approved.map(r => `
+          <tr>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.phone)}</td>
+            <td>${escapeHtml(r.team || r.department || '-')}</td>
+            <td>${escapeHtml(r.base || '-')}</td>
+            <td>${escapeHtml(r.position || '-')}</td>
+            <td>${r.checkinNo ? '已签到' : '未签到'}</td>
+            <td>${r.checkinNo ? escapeHtml(r.checkinNo) : '-'}</td>
+            <td class="row-actions"><button class="btn btn-danger btn-sm" data-delete-id="${r.id}">删除</button></td>
+          </tr>
+        `).join('');
+        checkinBody.querySelectorAll('[data-delete-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (!confirm('确定删除该已通过人员？删除后其报名记录将移除。')) return;
+            DataService.adminDelete(btn.dataset.deleteId);
+            render();
+          });
+        });
+      }
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const t = tab.dataset.tab;
+        document.getElementById('approvalPanel').style.display = t === 'approval' ? 'block' : 'none';
+        document.getElementById('checkinPanel').style.display = t === 'checkin' ? 'block' : 'none';
+        document.getElementById('weatherPanel').style.display = t === 'weather' ? 'block' : 'none';
+      });
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const rows = DataService.adminExport();
+      if (rows.length === 0) {
+        alert('暂无数据可导出');
+        return;
+      }
+      if (typeof XLSX !== 'undefined') {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '报名签到表');
+        XLSX.writeFile(wb, '年会报名签到表.xlsx');
+      } else {
+        // 降级：导出 CSV（Excel 可直接打开）
+        const keys = Object.keys(rows[0]);
+        const csv = [keys.join(','), ...rows.map(r => keys.map(k => '"' + (r[k] || '').replace(/"/g, '""') + '"').join(','))].join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '年会报名签到表.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
