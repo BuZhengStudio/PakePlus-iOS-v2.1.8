@@ -1,118 +1,145 @@
+window.addEventListener("DOMContentLoaded",()=>{const t=document.createElement("script");t.src="https://www.googletagmanager.com/gtag/js?id=G-W5GKHM0893",t.async=!0,document.head.appendChild(t);const n=document.createElement("script");n.textContent="window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-W5GKHM0893');",document.body.appendChild(n)});<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2025年度盛典</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-blue">
+  <div class="container">
+    <div class="page-header" id="titleArea">
+      <h1 class="page-title" id="mainTitle">以热爱 赴未来</h1>
+      <p class="page-subtitle">2025年度盛典</p>
+    </div>
 
-// very important, if you don't know what it is, don't touch it
-// 非常重要，不懂代码不要动，这里可以解决80%的问题，也可以生产1000+的bug
-const __pp_isBlobUrl = (url) => typeof url === 'string' && url.startsWith('blob:')
+    <div id="loginSection" class="card" style="max-width: 400px; margin: 0 auto; display: none;">
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginName">花名 *</label>
+          <input type="text" id="loginName" required placeholder="请输入花名">
+        </div>
+        <div class="form-group">
+          <label for="loginPhone">手机号 *</label>
+          <input type="tel" id="loginPhone" required placeholder="请输入手机号">
+        </div>
+        <button type="submit" class="btn btn-primary">登录</button>
+      </form>
+    </div>
 
-const __pp_guessExtFromMime = (mime) => {
-    const m = (mime || '').toLowerCase()
-    const map = {
-        'application/pdf': 'pdf',
-        'image/png': 'png',
-        'image/jpeg': 'jpg',
-        'image/gif': 'gif',
-        'image/webp': 'webp',
-        'text/plain': 'txt',
-        'application/json': 'json',
-        'application/zip': 'zip',
-        'application/octet-stream': 'bin',
-    }
-    return map[m] || ''
-}
+    <div id="homeSection" class="card-grid">
+      <a href="info.html" class="grid-item">
+        <div class="icon">📋</div>
+        <div class="label">大会信息</div>
+      </a>
+      <a href="register.html" class="grid-item">
+        <div class="icon">📝</div>
+        <div class="label">会议报名</div>
+      </a>
+      <a href="guide.html" class="grid-item">
+        <div class="icon">📖</div>
+        <div class="label">参会指南</div>
+      </a>
+      <a href="#" class="grid-item" id="albumBtn">
+        <div class="icon">📷</div>
+        <div class="label">云相册</div>
+      </a>
+    </div>
+  </div>
 
-const __pp_readBlobAsBase64 = (blob) =>
-    new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-            const result = reader.result || ''
-            const comma = result.indexOf(',')
-            resolve(comma >= 0 ? result.slice(comma + 1) : result)
-        }
-        reader.onerror = () => reject(reader.error || new Error('read blob failed'))
-        reader.readAsDataURL(blob)
-    })
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    (function initHomeOrLogin() {
+      const user = getLoginUser();
+      const loginSection = document.getElementById('loginSection');
+      const homeSection = document.getElementById('homeSection');
+      if (user) {
+        loginSection.style.display = 'none';
+        homeSection.style.display = 'grid';
+      } else {
+        loginSection.style.display = 'block';
+        homeSection.style.display = 'none';
+      }
+    })();
+  </script>
 
-const __pp_downloadBlobViaBridge = async (href, filename) => {
-    const handler = window?.webkit?.messageHandlers?.blobDownload
-    if (!handler) return false
+  <nav class="bottom-tab">
+    <a href="index.html" class="tab-item active"><span class="tab-icon">🏠</span>首页</a>
+    <a href="checkin.html" class="tab-item"><span class="tab-icon">✓</span>签到</a>
+    <a href="query.html" class="tab-item"><span class="tab-icon">👤</span>我的</a>
+  </nav>
 
-    const id = `pp_${Date.now()}_${Math.random().toString(16).slice(2)}`
-    try {
-        // blob: 只能在页面上下文读取
-        const res = await fetch(href)
-        const blob = await res.blob()
+  <div id="adminModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <h3>请输入管理员密码</h3>
+      <input type="password" id="adminPwd" placeholder="密码">
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="adminCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="adminOk">确定</button>
+      </div>
+    </div>
+  </div>
 
-        let name = filename || 'download'
-        const ext = __pp_guessExtFromMime(blob.type)
-        if (ext && !name.toLowerCase().endsWith(`.${ext}`)) {
-            name = `${name}.${ext}`
-        }
+  <div id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:white;padding:0.75rem 1.5rem;border-radius:8px;font-size:0.9rem;">敬请期待</div>
 
-        // 2MB 分片，避免单次 postMessage 过大
-        const chunkSize = 2 * 1024 * 1024
-        const total = Math.max(1, Math.ceil(blob.size / chunkSize))
+  <script>
+    // 登录表单
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('loginName').value.trim();
+      const phone = document.getElementById('loginPhone').value;
+      if (!name) { alert('请输入花名'); return; }
+      if (!Common.validatePhone(phone)) { alert('请输入正确的手机号'); return; }
+      setLoginUser(name, phone);
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('homeSection').style.display = 'grid';
+    });
 
-        handler.postMessage({
-            action: 'start',
-            id,
-            filename: name,
-            mimeType: blob.type || '',
-            size: blob.size || 0,
-            totalChunks: total,
-        })
+    // 隐藏管理员入口：连续点击主标题 5 次（2秒内）
+    let clickCount = 0;
+    let clickTimer = null;
+    const titleArea = document.getElementById('titleArea');
+    const adminModal = document.getElementById('adminModal');
+    const adminPwd = document.getElementById('adminPwd');
+    const adminOk = document.getElementById('adminOk');
+    const adminCancel = document.getElementById('adminCancel');
 
-        for (let i = 0; i < total; i++) {
-            const part = blob.slice(i * chunkSize, Math.min(blob.size, (i + 1) * chunkSize))
-            const base64 = await __pp_readBlobAsBase64(part)
-            handler.postMessage({
-                action: 'chunk',
-                id,
-                index: i,
-                totalChunks: total,
-                data: base64,
-            })
-        }
+    titleArea.addEventListener('click', () => {
+      clickCount++;
+      if (clickTimer) clearTimeout(clickTimer);
+      if (clickCount >= 5) {
+        clickCount = 0;
+        adminModal.style.display = 'flex';
+        adminPwd.value = '';
+        adminPwd.focus();
+      } else {
+        clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
+      }
+    });
 
-        handler.postMessage({ action: 'finish', id })
-        return true
-    } catch (err) {
-        try {
-            handler.postMessage({
-                action: 'error',
-                id,
-                message: String(err && err.message ? err.message : err),
-            })
-        } catch (_) {}
-        return false
-    }
-}
+    adminOk.addEventListener('click', () => {
+      if (adminPwd.value === (typeof AppConfig !== 'undefined' ? AppConfig.adminPassword : 'admin123')) {
+        window.location.href = 'admin.html';
+      } else {
+        alert('密码错误');
+      }
+    });
 
-const hookClick = (e) => {
-    const origin = e.target.closest('a')
-    const isBaseTargetBlank = document.querySelector('head base[target="_blank"]')
-    if (!origin || !origin.href) return
+    adminCancel.addEventListener('click', () => {
+      adminModal.style.display = 'none';
+    });
 
-    // 1) 支持 blob: 下载：交给 iOS 侧保存，避免 Web 侧弹二次授权/下载失败
-    if (__pp_isBlobUrl(origin.href)) {
-        e.preventDefault()
-        __pp_downloadBlobViaBridge(origin.href, origin.getAttribute('download') || origin.download).then(
-            (ok) => {
-                // bridge 不可用或失败：降级为原始行为
-                if (!ok) location.href = origin.href
-            }
-        )
-        return
-    }
-
-    // 2) 原有逻辑：拦截 _blank / base[target=_blank]
-    if ((origin.target === '_blank') || (isBaseTargetBlank)) {
-        e.preventDefault()
-        location.href = origin.href
-    }
-}
-
-window.open = function (url, target, features) {
-    console.log('open', url, target, features)
-    location.href = url
-}
-
-document.addEventListener('click', hookClick, { capture: true })
+    // 云相册：敬请期待
+    document.getElementById('albumBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const toast = document.getElementById('toast');
+      toast.textContent = '敬请期待';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 1500);
+    });
+  </script>
+</body>
+</html>
