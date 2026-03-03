@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的 - 2025年度盛典</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-blue">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">以热爱 赴未来</h1>
+      <p class="page-subtitle">2025年度盛典 · 我的</p>
+    </div>
+
+    <div id="resultSection" style="max-width: 480px; margin: 0 auto;">
+      <div id="resultContent"></div>
+      <p id="logoutRow" style="text-align:center;margin-top:1rem;display:none;"><a href="#" id="logoutBtn" style="color:rgba(255,255,255,0.9);font-size:0.9rem;">退出登录</a></p>
+    </div>
+  </div>
+
+  <nav class="bottom-tab">
+    <a href="index.html" class="tab-item"><span class="tab-icon">🏠</span>首页</a>
+    <a href="checkin.html" class="tab-item"><span class="tab-icon">✓</span>签到</a>
+    <a href="query.html" class="tab-item active"><span class="tab-icon">👤</span>我的</a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    const resultSection = document.getElementById('resultSection');
+    const resultContent = document.getElementById('resultContent');
+    const logoutRow = document.getElementById('logoutRow');
+
+    const statusText = { pending: '审批中', approved: '审核通过', rejected: '审核不通过' };
+    const statusClass = { pending: 'status-pending', approved: 'status-approved', rejected: 'status-rejected' };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function renderMyStatus() {
+      const user = getLoginUser();
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      const r = DataService.getRegistration(user.phone);
+      logoutRow.style.display = 'block';
+
+      if (!r) {
+        resultContent.innerHTML = '<div class="my-card"><div class="card-body">您尚未报名。<br><a href="register.html" class="btn btn-primary" style="margin-top:1rem;">去报名</a></div></div>';
+        return;
+      }
+
+      if (r.status === 'pending') {
+        resultContent.innerHTML = '<div class="my-card"><div class="card-body">审批中<br>您的报名正在审核，请耐心等待。</div></div>';
+        return;
+      }
+
+      if (r.status === 'rejected') {
+        resultContent.innerHTML = '<div class="my-card"><div class="card-body">抱歉您未通过本次年会报名</div></div>';
+        return;
+      }
+
+      // 审核通过：邀请函 + 参会信息 + 天气
+      const cfg = typeof AppConfig !== 'undefined' ? AppConfig : {};
+      const thanks = cfg.invitationThanks || '感谢您参加 2025年度盛典！';
+      const desc = cfg.invitationDesc || '以下是您的专属行程。';
+      const schedule = cfg.schedule || [{ date: '待定', items: ['具体安排另行通知'] }];
+      const weatherTip = (DataService.getWeatherTip && DataService.getWeatherTip()) || '';
+
+      let html = '';
+      html += '<div class="my-card">';
+      html += '<p>尊敬的 <strong>' + escapeHtml(r.name) + '</strong></p>';
+      html += '<p>' + thanks + '</p>';
+      html += '<p>' + desc + '</p>';
+      html += '</div>';
+
+      html += '<div class="my-card">';
+      html += '<div class="card-title">参会信息</div>';
+      html += '<div class="card-body">';
+      schedule.forEach(day => {
+        html += '<div class="schedule-day">';
+        html += '<div class="schedule-date">' + escapeHtml(day.date) + '</div>';
+        html += '<ul class="schedule-items">';
+        (day.items || []).forEach(item => { html += '<li>' + escapeHtml(item) + '</li>'; });
+        html += '</ul></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="my-card">';
+      html += '<div class="card-title">天气提示</div>';
+      html += '<div class="card-body">' + (weatherTip ? escapeHtml(weatherTip) : '暂无提示，敬请关注') + '</div>';
+      html += '</div>';
+
+      if (!r.checkinNo) {
+        html += '<div style="text-align:center;margin-top:1rem;"><a href="checkin.html" class="btn btn-primary" style="max-width:200px;">去签到</a></div>';
+      }
+
+      resultContent.innerHTML = html;
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      clearLoginUser();
+      window.location.href = 'index.html';
+    });
+
+    renderMyStatus();
+  </script>
+</body>
+</html>
