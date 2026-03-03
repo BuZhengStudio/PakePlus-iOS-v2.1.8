@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议报名</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-blue">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">以热爱 赴未来</h1>
+      <p class="page-subtitle">2025年度盛典 · 会议报名</p>
+    </div>
+
+    <div class="card" style="max-width: 400px; margin: 0 auto;">
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="name">花名 *</label>
+          <input type="text" id="name" name="name" required placeholder="请输入花名">
+        </div>
+        <div class="form-group">
+          <label for="phone">手机号 *</label>
+          <input type="tel" id="phone" name="phone" required placeholder="请输入手机号">
+        </div>
+        <div class="form-group">
+          <label for="team">所属团队（选填）</label>
+          <input type="text" id="team" name="team" placeholder="请输入所属团队">
+        </div>
+        <div class="form-group">
+          <label for="base">基地</label>
+          <select id="base" name="base">
+            <option value="">请选择</option>
+            <option value="杭州基地">杭州基地</option>
+            <option value="扬州基地">扬州基地</option>
+            <option value="沈阳基地">沈阳基地</option>
+            <option value="徐州基地">徐州基地</option>
+            <option value="西安基地">西安基地</option>
+            <option value="洛阳基地">洛阳基地</option>
+            <option value="郑州基地">郑州基地</option>
+            <option value="济南基地">济南基地</option>
+            <option value="合肥基地">合肥基地</option>
+            <option value="安吉基地">安吉基地</option>
+            <option value="邳州基地">邳州基地</option>
+            <option value="青岛基地">青岛基地</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="position">职位</label>
+          <select id="position" name="position">
+            <option value="">请选择</option>
+            <option value="主持">主持</option>
+            <option value="厅管">厅管</option>
+            <option value="多厅">多厅</option>
+            <option value="运营">运营</option>
+            <option value="中台">中台</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">提交报名</button>
+      </form>
+    </div>
+
+    <div id="successSection" class="card" style="display: none; max-width: 400px; margin: 0 auto;">
+      <div class="alert alert-success">
+        <strong>报名成功，等待审核</strong><br>
+        请前往「我的」页面查看审核进度。
+      </div>
+      <a href="query.html" class="btn btn-outline">去我的</a>
+    </div>
+  </div>
+
+  <nav class="bottom-tab">
+    <a href="index.html" class="tab-item"><span class="tab-icon">🏠</span>首页</a>
+    <a href="checkin.html" class="tab-item"><span class="tab-icon">✓</span>签到</a>
+    <a href="query.html" class="tab-item"><span class="tab-icon">👤</span>我的</a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    if (!getLoginUser()) { window.location.href = 'index.html'; }
+    const form = document.getElementById('registerForm');
+    const formSection = form.closest('.card');
+    const successSection = document.getElementById('successSection');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value;
+      const team = document.getElementById('team').value.trim();
+      const base = document.getElementById('base').value;
+      const position = document.getElementById('position').value;
+
+      if (!name) {
+        alert('请输入花名');
+        return;
+      }
+      if (!Common.validatePhone(phone)) {
+        alert('请输入正确的手机号');
+        return;
+      }
+
+      const result = DataService.submitRegistration({ name, phone, team, base, position });
+      if (result.ok) {
+        formSection.style.display = 'none';
+        successSection.style.display = 'block';
+      } else {
+        alert(result.message || '提交失败');
+      }
+    });
+  </script>
+</body>
+</html>
