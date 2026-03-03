@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>签到 - 2025年度盛典</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-blue">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">以热爱 赴未来</h1>
+      <p class="page-subtitle">2025年度盛典</p>
+    </div>
+
+    <div class="checkin-card" id="formSection">
+      <form id="checkinForm">
+        <button type="submit" class="checkin-btn">签到</button>
+      </form>
+      <p class="checkin-tip">使用当前登录身份签到</p>
+    </div>
+
+    <div class="checkin-card" id="successSection" style="display: none;">
+      <div class="checkin-result">
+        <div>你的签到编号</div>
+        <div class="no" id="checkinNo">0001</div>
+        <div class="name" id="checkinName">张三</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-tab">
+    <a href="index.html" class="tab-item"><span class="tab-icon">🏠</span>首页</a>
+    <a href="checkin.html" class="tab-item active"><span class="tab-icon">✓</span>签到</a>
+    <a href="query.html" class="tab-item"><span class="tab-icon">👤</span>我的</a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    const user = getLoginUser();
+    if (!user) {
+      window.location.href = 'index.html';
+    }
+
+    const form = document.getElementById('checkinForm');
+    const formSection = document.getElementById('formSection');
+    const successSection = document.getElementById('successSection');
+    const checkinNoEl = document.getElementById('checkinNo');
+    const checkinNameEl = document.getElementById('checkinName');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const result = DataService.submitCheckin(user.phone);
+      if (result.ok) {
+        checkinNoEl.textContent = result.checkinNo;
+        checkinNameEl.textContent = result.name;
+        formSection.style.display = 'none';
+        successSection.style.display = 'block';
+      } else {
+        alert(result.message || '签到失败');
+      }
+    });
+  </script>
+</body>
+</html>
